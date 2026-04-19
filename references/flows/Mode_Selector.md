@@ -65,6 +65,8 @@ def check_data_ready():
     ├── 00-大盘上下文.md
     ├── 01-策略大纲.md
     ├── 02-标的观察池.md
+    ├── short_term_memory.md     # 短期记忆（近1周）
+    ├── long_term_memory.md     # 长期记忆（近1月）
     ├── trading-plan.json
     ├── data/
     │   ├── market_YYYYMMDD.csv

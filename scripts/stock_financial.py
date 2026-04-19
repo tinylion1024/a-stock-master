@@ -4,6 +4,7 @@ A股基本面分析
 分析个股财务指标、估值、业绩等
 """
 
+import argparse
 import akshare as ak
 import pandas as pd
 from datetime import datetime
@@ -11,46 +12,25 @@ from datetime import datetime
 
 def get_stock_info(symbol):
     """获取个股基本信息"""
-    df = ak.stock_individual_info_em(symbol=symbol)
-    return df
+    return ak.stock_individual_info_em(symbol=symbol)
 
 
 def get_financial_indicator(symbol, period="按报告期"):
-    """
-    获取财务分析指标
-
-    参数:
-        symbol: 股票代码(带后缀，如 "000001.SZ")
-        period: "按报告期" 或 "按单季度"
-    """
-    df = ak.stock_financial_analysis_indicator_em(
+    """获取财务分析指标"""
+    return ak.stock_financial_analysis_indicator_em(
         symbol=symbol,
         indicator=period
     )
-    return df
 
 
 def get_balance_sheet(date="20240331"):
-    """
-    获取资产负债表
-
-    参数:
-        date: 报告期，格式 YYYY0331/YYYY0630/YYYY0930/YYYY1231
-    """
-    df = ak.stock_zcfz_em(date=date)
-    return df
+    """获取资产负债表"""
+    return ak.stock_zcfz_em(date=date)
 
 
 def get_income_statement(date="20240331"):
     """获取利润表"""
-    df = ak.stock_lrb_em(date=date)
-    return df
-
-
-def get_cash_flow(date="20240331"):
-    """获取现金流量表"""
-    df = ak.stock_xjll_em(date=date)
-    return df
+    return ak.stock_lrb_em(date=date)
 
 
 def get_market_pe_pb():
@@ -60,96 +40,19 @@ def get_market_pe_pb():
     return pe_df, pb_df
 
 
-def evaluate_valuation(symbol):
-    """
-    估值评估
-    对比个股与市场整体估值
-    """
-    # 获取个股信息
-    info = get_stock_info(symbol)
-
-    # 获取财务指标
-    try:
-        indicator = get_financial_indicator(symbol + ".SZ" if symbol.startswith("0") else symbol + ".SH")
-    except:
-        indicator = None
-
-    # 获取市场估值
-    market_pe, market_pb = get_market_pe_pb()
-
-    result = {
-        'symbol': symbol,
-        'info': info,
-        'indicator': indicator,
-        'market_pe': market_pe,
-        'market_pb': market_pb
-    }
-
-    return result
-
-
-def screen_by_financial(df, conditions):
-    """
-    财务指标筛选
-
-    conditions 参数:
-        - min_pe: 最小市盈率
-        - max_pe: 最大市盈率
-        - min_pb: 最小市净率
-        - max_pb: 最大市净率
-        - min_roe: 最小净资产收益率
-        - max_gross_margin: 最大毛利率
-        - min_net_margin: 最小净利率
-    """
-    result = df.copy()
-
-    if 'min_pe' in conditions and conditions['min_pe']:
-        result = result[result['市盈率-动态'] >= conditions['min_pe']]
-
-    if 'max_pe' in conditions and conditions['max_pe']:
-        result = result[result['市盈率-动态'] <= conditions['max_pe']]
-
-    if 'min_pb' in conditions and conditions['min_pb']:
-        result = result[result['市净率'] >= conditions['min_pb']]
-
-    if 'max_pb' in conditions and conditions['max_pb']:
-        result = result[result['市净率'] <= conditions['max_pb']]
-
-    # 市值筛选（单位：亿元）
-    if 'min_market_cap' in conditions and conditions['min_market_cap']:
-        result = result[result['总市值'] >= conditions['min_market_cap'] * 1e8]
-
-    if 'max_market_cap' in conditions and conditions['max_market_cap']:
-        result = result[result['总市值'] <= conditions['max_market_cap'] * 1e8]
-
-    return result
-
-
 def analyze_stock_financial(symbol):
-    """
-    综合财务分析
-
-    分析维度：
-    1. 盈利能力（毛利率、净利率、ROE）
-    2. 成长性（营收增长、利润增长）
-    3. 偿债能力（资产负债率）
-    4. 运营效率（周转率）
-    """
+    """综合财务分析"""
     try:
-        # 获取财务指标
         indicator = get_financial_indicator(symbol, period="按报告期")
-
         if indicator is None or len(indicator) == 0:
             return None
 
-        # 取最新数据
         latest = indicator.iloc[-1]
         previous = indicator.iloc[-2] if len(indicator) > 1 else latest
 
-        # 分析各项指标
         analysis = {
             'symbol': symbol,
-            'report_date': latest.get('REPORT_DATE', 'N/A'),
+            'report_date': str(latest.get('REPORT_DATE', 'N/A')),
             '盈利能力': {
                 '毛利率': latest.get('XSMLL', 'N/A'),
                 '净利率': latest.get('XSJLL', 'N/A'),
@@ -168,20 +71,40 @@ def analyze_stock_financial(symbol):
                 '存货周转率': latest.get('CHZZL', 'N/A'),
             }
         }
-
         return analysis
-
     except Exception as e:
         print(f"获取 {symbol} 财务数据失败: {e}")
         return None
 
 
-def display_financial_report(symbol):
+def display_financial_report(symbol, output_format=None):
     """展示财务分析报告"""
     analysis = analyze_stock_financial(symbol)
 
     if analysis is None:
         print(f"无法获取 {symbol} 的财务数据")
+        return
+
+    if output_format == 'json':
+        import json
+        # 转换所有值为可JSON序列化
+        data = {
+            'symbol': analysis['symbol'],
+            'report_date': analysis['report_date'],
+        }
+        for category, items in analysis.items():
+            if category in ['symbol', 'report_date']:
+                continue
+            data[category] = {}
+            for key, value in items.items():
+                if value != 'N/A':
+                    try:
+                        data[category][key] = float(value)
+                    except:
+                        data[category][key] = str(value)
+                else:
+                    data[category][key] = None
+        print(json.dumps(data, ensure_ascii=False, indent=2))
         return
 
     print(f"\n{'='*60}")
@@ -204,16 +127,74 @@ def display_financial_report(symbol):
                 print(f"  {key}: N/A")
 
 
-if __name__ == "__main__":
+def main():
+    parser = argparse.ArgumentParser(
+        description='A股基本面分析',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+示例:
+  python stock_financial.py 000001                    # 分析平安银行
+  python stock_financial.py 000001 --json          # JSON格式输出
+  python stock_financial.py 000001 --period 季度     # 按单季度
+  python stock_financial.py --market-pe            # 显示市场整体估值
+        """
+    )
+    parser.add_argument('symbol', nargs='?', help='股票代码')
+    parser.add_argument('--json', action='store_true', help='JSON格式输出')
+    parser.add_argument('--period', choices=['报告期', '季度'], default='报告期',
+                        help='财务周期 (默认: 报告期)')
+    parser.add_argument('--market-pe', action='store_true', help='显示市场整体估值')
+    parser.add_argument('--balance-sheet', help='显示资产负债表 (日期 YYYYMM格式)')
+    parser.add_argument('--income', help='显示利润表 (日期 YYYYMM格式)')
+    args = parser.parse_args()
+
     print(f"=== A股基本面分析 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===\n")
 
-    # 示例：分析平安银行
-    display_financial_report("000001")
+    if args.market_pe:
+        print("【市场估值概览】")
+        market_pe, market_pb = get_market_pe_pb()
+        if market_pe is not None and len(market_pe) > 0:
+            pe_val = market_pe.tail(1)['市盈率'].values[0]
+            print(f"市场 TTM 市盈率: {pe_val:.2f}")
+        if market_pb is not None and len(market_pb) > 0:
+            pb_val = market_pb.tail(1)['市净率'].values[0]
+            print(f"市场 市净率: {pb_val:.2f}")
+        return
 
-    print("\n" + "="*60 + "\n")
+    if args.balance_sheet:
+        print(f"【资产负债表 {args.balance_sheet}】")
+        df = get_balance_sheet(args.balance_sheet)
+        if df is not None:
+            display_cols = ['股票代码', '股票简称', '资产-总资产', '负债-总负债', '资产负债率']
+            available = [c for c in display_cols if c in df.columns]
+            print(df[available].head(20).to_string(index=False))
+        return
 
-    # 市场估值
+    if args.income:
+        print(f"【利润表 {args.income}】")
+        df = get_income_statement(args.income)
+        if df is not None:
+            display_cols = ['股票代码', '股票简称', '营业总收入', '归属净利润', '基本每股收益']
+            available = [c for c in display_cols if c in df.columns]
+            print(df[available].head(20).to_string(index=False))
+        return
+
+    if args.symbol:
+        period = "按单季度" if args.period == '季度' else "按报告期"
+        print(f"【{args.symbol} 财务分析 (周期: {period})】")
+        display_financial_report(args.symbol, 'json' if args.json else None)
+        return
+
+    # 默认显示市场估值
     print("【市场估值概览】")
     market_pe, market_pb = get_market_pe_pb()
-    print(f"市场 TTM 市盈率: {market_pe.tail(1)['市盈率'].values[0]:.2f}")
-    print(f"市场 市净率: {market_pb.tail(1)['市净率'].values[0]:.2f}")
+    if market_pe is not None and len(market_pe) > 0:
+        pe_val = market_pe.tail(1)['市盈率'].values[0]
+        print(f"市场 TTM 市盈率: {pe_val:.2f}")
+    if market_pb is not None and len(market_pb) > 0:
+        pb_val = market_pb.tail(1)['市净率'].values[0]
+        print(f"市场 市净率: {pb_val:.2f}")
+
+
+if __name__ == "__main__":
+    main()
