@@ -59,7 +59,9 @@ a-stock-master/
 │   │   ├── 05-Review/           # 复盘
 │   │   │   └── EOD_Review.md
 │   │   └── Shared/              # 共享基础设施
-│   │       └── common.md
+│   │       └── Infrastructure.md
+│   ├── mode/                    # 模式选择
+│   │   └── Mode_Selector.md
 │   └── guides/
 │       └── technical-analysis-guide.md
 └── scripts/
