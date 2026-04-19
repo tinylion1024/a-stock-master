@@ -44,6 +44,180 @@
 
 ---
 
+## 数据准备前置流程
+
+### 目录初始化与Tag检查
+
+```
+每次执行任何功能前，必须先检查数据准备状态：
+```
+
+```python
+import os
+from datetime import datetime
+
+def check_data_ready():
+    """
+    检查数据准备状态
+
+    目录结构：
+    a-stock-YYYYMMDD/
+    ├── 00-大盘上下文.md
+    ├── 01-策略大纲.md
+    ├── 02-标的观察池.md
+    ├── trading-plan.json
+    ├── data/
+    │   ├── market_YYYYMMDD.csv
+    │   ├── sentiment_YYYYMMDD.json
+    │   ├── fund_flow_YYYYMMDD.json
+    │   ├── sector_rank_YYYYMMDD.json
+    │   ├── news_YYYYMMDD.json
+    │   ├── tgb_YYYYMMDD_corpus.txt
+    │   └── tgb_list_YYYYMMDD.txt
+    ├── logs/
+    ├── 标的分析/
+    ├── DATA_SUCCESS          # 数据准备成功Tag
+    └── DATA_DEGRADED          # 数据降级Tag（如有）
+    """
+    date_str = datetime.now().strftime('%Y%m%d')
+    workspace = f"a-stock-{date_str}"
+
+    # 检查目录是否存在
+    if not os.path.exists(workspace):
+        # 创建目录结构
+        os.makedirs(workspace, exist_ok=True)
+        os.makedirs(f"{workspace}/data", exist_ok=True)
+        os.makedirs(f"{workspace}/logs", exist_ok=True)
+        os.makedirs(f"{workspace}/标的分析", exist_ok=True)
+        return 'need_prepare'
+
+    # 检查Tag文件
+    if os.path.exists(f"{workspace}/DATA_SUCCESS"):
+        return 'ready'  # 数据已准备，无需重复获取
+
+    if os.path.exists(f"{workspace}/DATA_DEGRADED"):
+        return 'degraded'  # 已有降级数据，继续使用
+
+    # 目录存在但无Tag，需要准备
+    return 'need_prepare'
+```
+
+### 数据准备流程
+
+```python
+def prepare_data_with_retry(max_retries=3):
+    """
+    数据准备流程（带重试）
+
+    状态流转：
+    need_prepare → preparing → success/degraded
+                         ↓
+                    failed（重试3次后降级）
+    """
+    date_str = datetime.now().strftime('%Y%m%d')
+    workspace = f"a-stock-{date_str}"
+
+    status = check_data_ready()
+
+    if status == 'ready':
+        print(f"✅ 数据已就绪，跳过数据准备")
+        return 'ready'
+
+    if status == 'degraded':
+        print(f"⚠️ 存在降级数据，继续使用")
+        return 'degraded'
+
+    # 需要准备，执行数据准备
+    for attempt in range(1, max_retries + 1):
+        try:
+            print(f"📥 开始数据准备（第{attempt}次尝试）...")
+
+            # 执行Step 0数据准备
+            success = execute_data_preparation()
+
+            if success:
+                # 创建成功Tag
+                with open(f"{workspace}/DATA_SUCCESS", 'w') as f:
+                    f.write(f"数据准备完成: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+                print(f"✅ 数据准备成功")
+                return 'ready'
+
+        except Exception as e:
+            print(f"❌ 第{attempt}次失败: {e}")
+            if attempt >= max_retries:
+                # 重试3次后仍失败，降级
+                create_degraded_tag(workspace, error_msg=str(e))
+                return 'degraded'
+
+    return 'degraded'
+```
+
+### 降级Tag规则
+
+```
+降级条件：
+1. 数据获取失败（网络超时/API不可用）
+2. 重试3次后依然不成功
+
+降级处理：
+- 创建 DATA_DEGRADED Tag文件
+- 记录失败原因和数据缺失情况
+- 后续分析降低置信度（明确标注数据缺失）
+
+禁止行为：
+- ❌ 禁止使用Mock数据填充
+- ❌ 禁止假设数据存在
+- ❌ 禁止捏造数据
+
+降级输出示例：
+```markdown
+# 数据准备降级报告 - 20251229
+
+## 状态：DATA_DEGRADED
+
+## 失败原因
+- 新闻数据获取失败：API超时
+- 淘股吧语料获取失败：网络不可达
+
+## 缺失数据
+- ❌ news_YYYYMMDD.json（未获取）
+- ❌ tgb_YYYYMMDD_corpus.txt（未获取）
+- ✅ market_YYYYMMDD.csv（已获取）
+- ✅ sentiment_YYYYMMDD.json（已获取）
+
+## 影响评估
+- 消息面分析：无法进行
+- 舆情分析：无法进行
+- 判市置信度：降低 20%
+- 选股置信度：降低 15%
+
+## 后续处理
+1. 明确告知用户数据缺失情况
+2. 在分析和结论中标注"数据来源：[降级]"
+3. 增加风险提示
+```
+
+### 数据复用规则
+
+```
+已存在DATA_SUCCESS时：
+✅ 复用已有数据（行情/情绪/资金）
+✅ 基于已有数据进行分析
+❌ 不重复调用数据脚本
+
+非必要情况：
+- 仅修改少量参数时不需要重新获取
+- 查看昨日数据时不需要重新获取
+- 复盘时复用当日数据
+
+需要重新获取的情况：
+- 用户明确要求刷新数据
+- Tag文件过期（超过24小时）
+- 数据明显异常需要重新获取
+```
+
+---
+
 ## Step 0: 数据准备
 
 ### 0.1 基础数据获取
