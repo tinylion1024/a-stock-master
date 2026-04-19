@@ -9,16 +9,28 @@
 ### 目录结构
 
 ```
-workspace/stock-YYYYMMDD/
+a-stock-YYYYMMDD/
 ├── 00-大盘上下文.md         # 当日市场大盘、新闻、情绪
 ├── 01-策略大纲.md           # 当日策略总纲
 ├── 02-标的观察池.md         # 关注股票列表
 ├── trading-plan.json       👈 当日交易计划
-├── backtest/               👈 回测结果目录
+├── data/                   👈 行情/情绪/舆情数据
 ├── logs/                   👈 运行日志
 └── 标的分析/               👈 股票分析记录
     ├── 600000-某某股份.md
     └── 000001-平安银行.md
+```
+
+### Data 目录结构
+
+```
+data/
+├── market_quote.csv        # 当日全市场行情
+├── sentiment.json          # 情绪数据（涨停/跌停/炸板率）
+├── fund_flow.json          # 资金流向（北向/主力）
+├── sector_rank.json        # 板块排行
+├── news.json               # 当日重要新闻
+└── tgb_corpus.txt         # 淘股吧舆情语料
 ```
 
 ### 大盘上下文内容
@@ -101,7 +113,7 @@ workspace/stock-YYYYMMDD/
 
 ### 文件
 
-`workspace/stock-YYYYMMDD/trading-plan.json`
+`a-stock-YYYYMMDD/trading-plan.json`
 
 ```json
 {
@@ -202,7 +214,7 @@ ak.stock_zh_a_hist(symbol, period="daily", start_date, end_date, adjust="qfq")
 [YYYY-MM-DD HH:mm:ss] [LEVEL] [模块] 消息
 
 # 日志文件
-workspace/stock-YYYYMMDD/logs/
+a-stock-YYYYMMDD/logs/
 ├── run.log    # 运行日志
 ├── trade.log  # 交易日志
 └── error.log  # 错误日志
