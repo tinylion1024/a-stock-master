@@ -25,12 +25,12 @@ a-stock-YYYYMMDD/
 
 ```
 data/
-├── market_quote.csv        # 当日全市场行情
-├── sentiment.json          # 情绪数据（涨停/跌停/炸板率）
-├── fund_flow.json          # 资金流向（北向/主力）
-├── sector_rank.json        # 板块排行
-├── news.json               # 当日重要新闻
-└── tgb_corpus.txt         # 淘股吧舆情语料
+├── market_20251229.csv    # 当日全市场行情
+├── sentiment_20251229.json # 情绪数据（涨停/跌停/炸板率）
+├── fund_flow_20251229.json # 资金流向（北向/主力）
+├── sector_rank_20251229.json # 板块排行
+├── news_20251229.json      # 当日重要新闻
+└── tgb_20251229_corpus.txt # 淘股吧舆情语料
 ```
 
 ### 大盘上下文内容
