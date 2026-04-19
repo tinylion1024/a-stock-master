@@ -398,33 +398,42 @@ def fetch_and_summarize_kol_opinions():
 
 ### 0.5 记忆加载（滑动窗口）
 
-```
-短期记忆（近1周）：
-└── a-stock-YYYYMMDD/data/ 中的历史数据
-    ├── 过去7天的 sentiment_*.json
-    ├── 过去7天的 fund_flow_*.json
-    └── 过去7天的 market_*.csv
+记忆文件存储在当前workspace下，持久化为md文件：
 
-长期记忆（近1月）：
-└── a-stock-YYYYMMDD/ 中的历史大盘上下文
-    ├── 00-大盘上下文.md（过去30天）
-    └── 标的分析/（过去30天的重要标的复盘）
+```
+a-stock-YYYYMMDD/
+├── 00-大盘上下文.md         # 当日判市结果
+├── 01-策略大纲.md           # 当日选股结果
+├── 02-标的观察池.md         # 当日观察池
+├── short_term_memory.md     # 短期记忆（近1周）持久化
+├── long_term_memory.md      # 长期记忆（近1月）持久化
+├── data/
+│   ├── market_YYYYMMDD.csv
+│   ├── sentiment_YYYYMMDD.json
+│   ├── fund_flow_YYYYMMDD.json
+│   ├── sector_rank_YYYYMMDD.json
+│   ├── news_YYYYMMDD.json
+│   ├── tgb_YYYYMMDD_corpus.txt
+│   └── tgb_list_YYYYMMDD.txt
+├── logs/
+└── 标的分析/
 ```
 
 ```python
-def load_short_term_memory():
-    """加载短期记忆（近1周）"""
+def generate_short_term_memory():
+    """生成短期记忆并持久化为md（近1周）"""
     today = datetime.now()
-    week_data = []
+    date_str = today.strftime('%Y%m%d')
+    workspace = f"a-stock-{date_str}"
 
+    week_data = []
     for i in range(1, 8):  # 近7天
         date = (today - timedelta(days=i)).strftime('%Y%m%d')
-        workspace = f"a-stock-{date}"
+        historical_workspace = f"a-stock-{date}"
 
-        # 读取情绪数据
-        sentiment_file = f"{workspace}/data/sentiment_{date}.json"
-        # 读取资金数据
-        fund_file = f"{workspace}/data/fund_flow_{date}.json"
+        # 读取历史情绪数据
+        sentiment_file = f"{historical_workspace}/data/sentiment_{date}.json"
+        fund_file = f"{historical_workspace}/data/fund_flow_{date}.json"
 
         # AI提炼关键信息
         week_summary = {
@@ -436,19 +445,36 @@ def load_short_term_memory():
         }
         week_data.append(week_summary)
 
+    # 持久化为md文件
+    md_content = "# 短期记忆（近1周）\n\n"
+    md_content += f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n"
+
+    for item in week_data:
+        md_content += f"## {item['date']}\n"
+        md_content += f"- 涨停均值: {item['涨停均值']}\n"
+        md_content += f"- 资金流向: {item['资金流向']}\n"
+        md_content += f"- 热点板块: {item['热点板块']}\n"
+        md_content += f"- 情绪变化: {item['情绪变化']}\n\n"
+
+    # 写入文件
+    with open(f"{workspace}/short_term_memory.md", 'w', encoding='utf-8') as f:
+        f.write(md_content)
+
     return week_data
 
-def load_long_term_memory():
-    """加载长期记忆（近1月）"""
+def generate_long_term_memory():
+    """生成长期记忆并持久化为md（近1月）"""
     today = datetime.now()
-    month_data = []
+    date_str = today.strftime('%Y%m%d')
+    workspace = f"a-stock-{date_str}"
 
+    month_data = []
     for i in range(1, 31):  # 近30天
         date = (today - timedelta(days=i)).strftime('%Y%m%d')
-        workspace = f"a-stock-{date}"
+        historical_workspace = f"a-stock-{date}"
 
         # 读取大盘上下文
-        context_file = f"{workspace}/00-大盘上下文.md"
+        context_file = f"{historical_workspace}/00-大盘上下文.md"
 
         # AI提炼关键信息
         month_summary = {
@@ -460,12 +486,54 @@ def load_long_term_memory():
         }
         month_data.append(month_summary)
 
+    # 持久化为md文件
+    md_content = "# 长期记忆（近1月）\n\n"
+    md_content += f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n"
+
+    for item in month_data:
+        md_content += f"## {item['date']}\n"
+        md_content += f"- 安全等级: {item['安全等级']}\n"
+        md_content += f"- 市场特征: {item['市场特征']}\n"
+        md_content += f"- 重点标的: {item['重点标的']}\n"
+        md_content += f"- 操作结果: {item['操作结果']}\n\n"
+
+    # 写入文件
+    with open(f"{workspace}/long_term_memory.md", 'w', encoding='utf-8') as f:
+        f.write(md_content)
+
     return month_data
+
+def load_memory():
+    """加载记忆（优先从md文件读取）"""
+    today = datetime.now()
+    date_str = today.strftime('%Y%m%d')
+    workspace = f"a-stock-{date_str}"
+
+    short_term_file = f"{workspace}/short_term_memory.md"
+    long_term_file = f"{workspace}/long_term_memory.md"
+
+    short_term = []
+    long_term = []
+
+    # 读取短期记忆
+    if os.path.exists(short_term_file):
+        with open(short_term_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+            # AI解析md内容，提取关键信息
+            short_term = parse_short_term_memory(content)
+
+    # 读取长期记忆
+    if os.path.exists(long_term_file):
+        with open(long_term_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+            # AI解析md内容，提取关键信息
+            long_term = parse_long_term_memory(content)
+
+    return short_term, long_term
 
 def merge_memory_for_context():
     """合并记忆生成上下文"""
-    short_term = load_short_term_memory()
-    long_term = load_long_term_memory()
+    short_term, long_term = load_memory()
 
     context = {
         '近期趋势': [],      # 短期记忆提炼
@@ -527,6 +595,10 @@ def merge_memory_for_context():
 - 安全等级：多数日子在🟢-🟡
 - 高标股特征：7板以上慎追
 - 板块轮动：每3-5天切换一次
+
+### 记忆持久化
+- ✅ short_term_memory.md（已生成）
+- ✅ long_term_memory.md（已生成）
 
 ## 结论
 当前市场环境适合积极操作
