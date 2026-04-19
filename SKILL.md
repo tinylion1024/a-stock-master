@@ -47,21 +47,14 @@ A 股投资分析助手，基于 AKShare 提供的数据，辅助投资者进行
 a-stock-master/
 ├── SKILL.md
 ├── references/
-│   ├── flows/
-│   │   ├── 01-Market/           # 判市
-│   │   │   └── Market_Assessment.md
-│   │   ├── 02-Stock/           # 选股
-│   │   │   └── Stock_Screening.md
-│   │   ├── 03-Diagnosis/       # 诊股
-│   │   │   └── Stock_Diagnosis.md
-│   │   ├── 04-Strategy/        # 策略
-│   │   │   └── Trading_Strategy.md
-│   │   ├── 05-Review/           # 复盘
-│   │   │   └── EOD_Review.md
-│   │   └── Shared/              # 共享基础设施
-│   │       └── Infrastructure.md
-│   ├── mode/                    # 模式选择
-│   │   └── Mode_Selector.md
+│   ├── flows/                   # 扁平化，所有流程文件在同一层
+│   │   ├── Market_Assessment.md  # 判市
+│   │   ├── Stock_Screening.md   # 选股
+│   │   ├── Stock_Diagnosis.md   # 诊股
+│   │   ├── Trading_Strategy.md   # 策略
+│   │   ├── EOD_Review.md        # 复盘
+│   │   ├── Mode_Selector.md      # 模式选择
+│   │   └── Infrastructure.md     # 共享基础设施
 │   └── guides/
 │       └── technical-analysis-guide.md
 └── scripts/
